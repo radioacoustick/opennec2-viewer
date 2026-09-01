@@ -1,0 +1,3 @@
+[submodule "external/necpp"]
+	path = external/necpp
+	url = https://github.com/radioacoustick/necpp
