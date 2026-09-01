@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- Copyright (c) 2026 Valery Kustarev (https://github.com/radioacoustick) -->
+<!--
+  This XML resource is part of Open NEC2 Viewer.
+  Licensed under GNU GPL v3 or later.
+  See the LICENSE file in the project root for details.
+-->
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/nav_geometry"
+        android:icon="@drawable/ic_geometry"
+        android:title="@string/input" />
+    <item
+        android:id="@+id/nav_pattern"
+        android:icon="@drawable/ic_radar"
+        android:title="@string/pattern" />
+    <item
+        android:id="@+id/nav_charts"
+        android:icon="@drawable/ic_chart"
+        android:title="@string/charts" />
+</menu>

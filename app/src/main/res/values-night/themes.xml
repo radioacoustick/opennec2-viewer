@@ -1,0 +1,25 @@
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- Copyright (c) 2026 Valery Kustarev (https://github.com/radioacoustick) -->
+<!--
+  This XML resource is part of Open NEC2 Viewer.
+  Licensed under GNU GPL v3 or later.
+  See the LICENSE file in the project root for details.
+-->
+<resources>
+    <!-- Base application theme. -->
+    <style name="Theme.OpenNEC2Viewer" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Key Colors of the Material3 Theme -->
+        <item name="colorPrimary">@color/m_primary</item>
+        <item name="colorSecondary">@color/m_secondary</item>
+        <item name="colorTertiary">@color/m_tertiary</item>
+        <item name="colorError">@color/m_error</item>
+        <item name="colorSurface">@color/m_surface</item>
+        <item name="android:windowBackground">@color/m_surface</item>
+        <!-- Edge-to-edge -->
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <!-- Custom colors for the 3D viewer -->
+        <item name="filamentBackgroundColor">@color/m_filamentBackgroundColor</item>
+        <item name="filamentAntennaColor">@color/m_filamentAntennaColor</item>
+    </style>
+</resources>

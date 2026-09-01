@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- Copyright (c) 2026 Valery Kustarev (https://github.com/radioacoustick) -->
+<!--
+  This XML resource is part of Open NEC2 Viewer.
+  Licensed under GNU GPL v3 or later.
+  See the LICENSE file in the project root for details.
+-->
+<resources>
+    <!-- Key Colors of the Material3 Theme -->
+    <color name="m_primary">#AAC7FF</color>
+    <color name="m_secondary">#AAC7FF</color>
+    <color name="m_tertiary">#F4D5A8</color>
+    <color name="m_error">#F89BAC</color>
+    <color name="m_surface">#131313</color>
+    <!-- Custom colors for the 3D viewer -->
+    <color name="m_filamentBackgroundColor">#060606</color>
+    <color name="m_filamentAntennaColor">#F0F4F2</color>
+    <!-- Radiation Pattern polar graphs colors. -->
+    <color name="horizontalPlaneColor">#FFAB91</color>
+    <color name="verticalPlaneColor">#B39DDB</color>
+    <color name="gridColor">#80CBC4</color>
+    <color name="legendTextColor">#CE93D8</color>
+    <color name="textColor">#80DEEA</color>
+</resources>

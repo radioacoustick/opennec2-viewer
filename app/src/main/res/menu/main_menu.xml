@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- Copyright (c) 2026 Valery Kustarev (https://github.com/radioacoustick) -->
+<!--
+  This XML resource is part of Open NEC2 Viewer.
+  Licensed under GNU GPL v3 or later.
+  See the LICENSE file in the project root for details.
+--><menu xmlns:android="http://schemas.android.com/apk/res/android"
+      xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/action_open_file"
+        android:icon="@drawable/ic_folder_open"
+        android:title="@string/action_open_file"
+        app:showAsAction="ifRoom" />
+    <item
+        android:id="@+id/action_start_nec_engine"
+        android:icon="@drawable/ic_settings"
+        android:title="@string/action_start_nec_engine"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_settings"
+        android:title="@string/action_settings"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_about"
+        android:title="@string/action_about"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_exit"
+        android:icon="@drawable/ic_exit"
+        android:title="@string/action_exit"
+        app:showAsAction="never" />
+</menu>

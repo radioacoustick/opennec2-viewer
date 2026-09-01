@@ -1,0 +1,41 @@
+/*
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ * Copyright (c) 2026 Valery Kustarev (https://github.com/radioacoustick)
+ *
+ * This file is part of Open NEC2 Viewer.
+ * Licensed under GNU GPL v3 or later.
+ * See the LICENSE file in the project root for details.
+ *
+ * Color Material for 3D Geometry Rendering
+ * 
+ * Description:
+ * Standard unlit/lit material used for coloring custom wireframes and solid meshes.
+ * 
+ * Parameters:
+ * - baseColor (float4): RGBA color vector (default: solid white)
+ */
+material {
+    name : ColorMaterial,
+    shadingModel : unlit,
+    blending : opaque,
+    culling : none,
+    doubleSided : true,
+    depthWrite : true,
+    requires : [
+        color
+    ],
+    parameters : [
+        {
+            type : float4,
+            name : baseColor
+        }
+    ]
+}
+
+fragment {
+    void material(inout MaterialInputs material) {
+        prepareMaterial(material);
+        float4 vColor = getColor();
+        material.baseColor = materialParams.baseColor * vColor;
+    }
+}

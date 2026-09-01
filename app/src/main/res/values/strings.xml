@@ -1,0 +1,70 @@
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- Copyright (c) 2026 Valery Kustarev (https://github.com/radioacoustick) -->
+<!--
+  This XML resource is part of Open NEC2 Viewer.
+  Licensed under GNU GPL v3 or later.
+  See the LICENSE file in the project root for details.
+-->
+<resources>
+    <string name="action_about">About app</string>
+    <string name="action_exit">Exit</string>
+    <string name="action_open_file">Open file</string>
+    <string name="action_settings">Settings</string>
+    <string name="action_start_nec_engine">Start nec2++ service</string>
+    <string name="app_name">OpenNEC2 Viewer</string>
+    <string name="button_caption_pattern">Calculate far field pattern</string>
+    <string name="calculate_charts">Calculate charts</string>
+    <string name="calculation_canceled">The calculation has been cancelled</string>
+    <string name="calculation_completed">Calculation completed</string>
+    <string name="cancel">Cancel</string>
+    <string name="charts">Charts</string>
+    <string name="close">Close</string>
+    <string name="frequency">Frequency</string>
+    <string name="front_back">Front/Back</string>
+    <string name="gain">Gain</string>
+    <string name="geometry">Geometry</string>
+    <string name="hpbw_hor">HPBW Hor</string>
+    <string name="hpbw_ver">HPBW Ver</string>
+    <string name="impedance">Impedance</string>
+    <string name="input">Input</string>
+    <string name="input_file">Input file</string>
+    <string name="language">Language</string>
+    <string name="main_direction">Main Direction</string>
+    <string name="max_gain">Max gain</string>
+    <string name="message_calculation_not_possible">"Without notification permissions, calculation is not possible.</string>
+    <string name="message_error_freq_not_found">Incorrect frequency</string>
+    <string name="message_error_invalid_file_format">Invalid file format</string>
+    <string name="message_error_nec">nec2++ core error</string>
+    <string name="message_error_nec2core">Nec2core error</string>
+    <string name="message_error_service">The service is unavailable. Please try again later.</string>
+    <string name="message_error_unknown">An unexpected exception occurred</string>
+    <string name="message_freq_not_found">The file is missing an FR card. Please enter the calculation frequency (MHz).</string>
+    <string name="message_service_already_running">The service is already running</string>
+    <string name="message_service_not_ready">The calculation service is not ready yet! Please wait for notification about service connection.</string>
+    <string name="message_simulation_start">The simulation has been started</string>
+    <string name="message_simulation_success_">The simulation was completed successfully</string>
+    <string name="message_warning_missing_card">Missing card</string>
+    <string name="no_graph_data">There is no data for the graph</string>
+    <string name="original_control_cards">Use original control cards FR/RP</string>
+    <string name="pattern">Pattern</string>
+    <string name="points">Points</string>
+    <string name="privacy_policy_declaration">Privacy policy declaration</string>
+    <string name="radiation_pattern_parameters">Radiation Pattern Parameters</string>
+    <string name="reactance">Reactance</string>
+    <string name="resistance">Resistance</string>
+    <string name="resolution_scale">Radiation Pattern resolution scale</string>
+    <string name="show_radiation_pattern">Show Radiation Pattern</string>
+    <string name="start_mhz">Start (MHz)</string>
+    <string name="stop_mhz">Stop (MHz)</string>
+    <string name="sweep_parameters">Sweep Parameters</string>
+    <string name="swr">SWR</string>
+    <string name="system_impedance">System impedance (Zo)</string>
+    <string name="target_frequency">Target Frequency</string>
+    <string name="text_area_hint">Antenna input NEC-code</string>
+    <string name="theme_dark">Dark theme</string>
+    <string name="theme_default">System theme</string>
+    <string name="theme_light">Light theme</string>
+    <string name="theme_select">Selecting the application theme</string>
+    <string name="title_freq_not_found">Frequency not found</string>
+    <string name="title_simulation_error_message">Simulation error</string>
+</resources>

@@ -1,0 +1,14 @@
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- Copyright (c) 2026 Valery Kustarev (https://github.com/radioacoustick) -->
+<!--
+  This XML resource is part of nec2core engine.
+  Licensed under GNU GPL v3 or later.
+  See the LICENSE file in the project root for details.
+-->
+<resources>
+    <string name="notification_channel_descript">Electrodynamic Calculations Background Service</string>
+    <string name="notification_channel_name">NEC2 Simulation Engine</string>
+    <string name="notification_title">NEC2 Simulation</string>
+    <string name="notification_content">Electrodynamic calculation is performed in the NEC2 core</string>
+    <string name="stop">Stop</string>
+</resources>

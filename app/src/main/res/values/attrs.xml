@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- Copyright (c) 2026 Valery Kustarev (https://github.com/radioacoustick) -->
+<!--
+  This XML resource is part of Open NEC2 Viewer.
+  Licensed under GNU GPL v3 or later.
+  See the LICENSE file in the project root for details.
+-->
+<resources>
+    <declare-styleable name="PolarPatternView">
+        <attr name="horizontalPlaneColor" format="color" />
+        <attr name="verticalPlaneColor" format="color" />
+        <attr name="gridColor" format="color" />
+        <attr name="textColor" format="color" />
+        <attr name="legendTextColor" format="color" />
+    </declare-styleable>
+    <!-- Custom attributes for the 3D viewer -->
+    <attr name="filamentBackgroundColor" format="color" />
+    <attr name="filamentAntennaColor" format="color" />
+</resources>

@@ -1,0 +1,250 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- Copyright (c) 2026 Valery Kustarev (https://github.com/radioacoustick) -->
+<!--
+  This XML resource is part of Open NEC2 Viewer.
+  Licensed under GNU GPL v3 or later.
+  See the LICENSE file in the project root for details.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/settingsRootView"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    tools:context=".SettingsActivity">
+
+    <com.google.android.material.appbar.AppBarLayout
+        android:id="@+id/appBarLayoutSettings"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:fitsSystemWindows="true">
+
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/settingsToolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            app:title="@string/action_settings" />
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+
+            <LinearLayout
+                android:id="@+id/setting_original_control"
+                style="@style/SettingsRowStyle">
+
+                <TextView
+                    style="@style/SettingsTitleStyle"
+                    android:layout_marginEnd="8dp"
+                    android:layout_weight="3"
+                    android:text="@string/original_control_cards" />
+
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/switch_settings_original_control"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:textOff=""
+                    android:textOn=""
+                    app:showText="false" />
+            </LinearLayout>
+
+            <com.google.android.material.card.MaterialCardView
+                style="@style/GlowCardStyle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <LinearLayout
+                    android:id="@+id/settings_pattern_parameters"
+                    style="@style/SettingsColumnStyle">
+
+                    <TextView
+                        style="@style/SettingsTitleStyle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/radiation_pattern_parameters"
+                        android:textAllCaps="true" />
+
+                    <View style="@style/SettingsDividerStyle" />
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/textInputLayout_resol_scale"
+                        style="@style/AppInputDropdownStyle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="@string/resolution_scale">
+
+                        <AutoCompleteTextView
+                            android:id="@+id/spinner_resol_scale"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="none"
+                            android:saveEnabled="false"
+                            tools:ignore="LabelFor,SpeakableTextPresentCheck" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/textInputLayout_target_freq"
+                        style="@style/AppInputStyle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="@string/target_frequency"
+                        app:prefixText="Fo: "
+                        app:suffixText="MHz">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/edt_target_freq"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="numberDecimal"
+                            android:selectAllOnFocus="true"
+                            tools:ignore="TextContrastCheck" />
+                    </com.google.android.material.textfield.TextInputLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                style="@style/GlowCardStyle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <LinearLayout
+                    android:id="@+id/settings_sweep_parameters"
+                    style="@style/SettingsColumnStyle">
+
+                    <TextView
+                        style="@style/SettingsTitleStyle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/sweep_parameters"
+                        android:textAllCaps="true" />
+
+                    <View style="@style/SettingsDividerStyle" />
+
+                    <LinearLayout
+                        android:id="@+id/item_sweep"
+                        style="@style/SettingsRowStyle"
+                        android:weightSum="8">
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            style="@style/AppInputStyle"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="3"
+                            android:hint="@string/start_mhz">
+
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/edt_start_freq"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="numberDecimal"
+                                android:text="140.0"
+                                tools:ignore="HardcodedText" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            style="@style/AppInputStyle"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:layout_weight="3"
+                            android:hint="@string/stop_mhz">
+
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/edt_stop_freq"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="numberDecimal"
+                                android:text="146.0"
+                                tools:ignore="HardcodedText" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            style="@style/AppInputStyle"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:layout_weight="2"
+                            android:hint="@string/points">
+
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/edt_steps"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="number"
+                                android:text="11"
+                                tools:ignore="HardcodedText" />
+                        </com.google.android.material.textfield.TextInputLayout>
+                    </LinearLayout>
+
+                    <View style="@style/SettingsDividerStyle" />
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/textInputLayout_impedance"
+                        style="@style/AppInputStyle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="@string/system_impedance"
+                        app:prefixText="Zo: "
+                        app:suffixText="Ω">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/edt_impedance"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="numberDecimal"
+                            android:selectAllOnFocus="true"
+                            tools:ignore="TextContrastCheck" />
+                    </com.google.android.material.textfield.TextInputLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <View style="@style/SettingsDividerStyle" />
+            <!-- Theme / Night Mode -->
+            <LinearLayout
+                android:id="@+id/itemTheme"
+                style="@style/SettingsColumnStyle">
+
+                <TextView
+                    style="@style/SettingsTitleStyle"
+                    android:text="@string/theme_select" />
+
+                <TextView
+                    android:id="@+id/tvThemeValue"
+                    style="@style/SettingsSummaryStyle" />
+            </LinearLayout>
+
+            <View style="@style/SettingsDividerStyle" />
+            <!-- Language -->
+            <LinearLayout
+                android:id="@+id/itemLanguage"
+                style="@style/SettingsRowStyle">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <TextView
+                        style="@style/SettingsTitleStyle"
+                        android:text="@string/language" />
+
+                    <TextView
+                        android:id="@+id/tvLanguageValue"
+                        style="@style/SettingsSummaryStyle" />
+                </LinearLayout>
+            </LinearLayout>
+
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>
