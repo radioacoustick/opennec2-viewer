@@ -54,12 +54,24 @@ public class NecCalculationService extends Service {
 	@Keep
 	private native String runNecCalculationNative(String input);
 
-	// TODO: native void cancelNecCalculationNative();
-
 	private final INecService.Stub binder = new INecService.Stub() {
 		@Override
 		public String runSimulation(String necInputContent) throws RemoteException {
-			return runNecCalculationNative(necInputContent);
+			// 1. The hard work has begun -> launching Foreground Service
+			startForegroundServiceInternal();
+			try {
+				// 2. Performing calculations in C++
+				return runNecCalculationNative(necInputContent);
+			} finally {
+				// 3. Stopping the Service after completion or after an error
+				stopForegroundInternal();
+			}
+		}
+
+		@Override
+		public void cancelSimulation() throws RemoteException {
+			Log.d(TAG, "Cancel calculation requested by user.");
+			stopServiceAndKillProcess();
 		}
 	};
 
@@ -76,11 +88,7 @@ public class NecCalculationService extends Service {
 			stopServiceAndKillProcess();
 			return START_NOT_STICKY;
 		}
-
-		// Showing Foreground Notification when starting the service
-		startForegroundServiceInternal();
-
-		return START_STICKY;
+		return START_NOT_STICKY;
 	}
 
 	private void startForegroundServiceInternal() {
@@ -97,8 +105,11 @@ public class NecCalculationService extends Service {
 		}
 	}
 
+	private void stopForegroundInternal() {
+		stopForeground(STOP_FOREGROUND_REMOVE);
+	}
+
 	private Notification createNotification() {
-		// Intent for the force stop button in the notification
 		Intent stopIntent = new Intent(this, NecCalculationService.class);
 		stopIntent.setAction(ACTION_STOP_SERVICE);
 
@@ -118,7 +129,6 @@ public class NecCalculationService extends Service {
 			 .setSmallIcon(R.drawable.ic_nec)
 			 .setOngoing(true)
 			 .setPriority(NotificationCompat.PRIORITY_LOW)
-			 // Adding a Force Close Button
 			 .addAction(
 				  R.drawable.ic_cancel,
 				  getString(R.string.stop),
@@ -145,8 +155,6 @@ public class NecCalculationService extends Service {
 
 	@Override
 	public IBinder onBind(Intent intent) {
-		// Launch Foreground when bound to the UI process
-		startForegroundServiceInternal();
 		return binder;
 	}
 
@@ -157,12 +165,15 @@ public class NecCalculationService extends Service {
 		stopServiceAndKillProcess();
 	}
 
+	// Since the service is isolated in a separate process (:nec_engine_process),
+	// killProcess immediately terminates the running C++ code.
 	private void stopServiceAndKillProcess() {
-		stopForeground(STOP_FOREGROUND_REMOVE);
+		NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+		if (manager != null) {
+			manager.cancel(NOTIFICATION_ID);
+		}
+		stopForegroundInternal();
 		stopSelf();
-
-		// Since the service is isolated in a separate process (:nec_engine_process),
-		// killProcess immediately terminates the running C++ code.
 		Process.killProcess(Process.myPid());
 	}
 

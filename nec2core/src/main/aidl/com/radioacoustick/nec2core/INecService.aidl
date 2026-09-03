@@ -24,4 +24,5 @@ interface INecService {
     // The Main Simulation Method
     // Input parameter is the text of the NEC cards, output is the calculation result (JSON string)
     String runSimulation(String necInputContent);
+    void cancelSimulation();
 }

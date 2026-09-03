@@ -12,3 +12,5 @@ Thumbs.db
 .externalNativeBuild
 .cxx
 local.properties
+# Android release bundles
+app/release

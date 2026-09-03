@@ -103,6 +103,7 @@ public class AppSettings {
 	}
 
 	// Radiation Pattern Resolution Scale Set
+	public static final String ACTION_STOP_SERVICE = "com.radioacoustick.nec2core.ACTION_STOP_NEC_SERVICE";
 	public static final Integer[] RP_RESOLUTION_SCALE_SET = new Integer[]{1, 2, 3, 4, 5, 6, 8, 10};
 	private AppTheme appTheme;      // Application theme
 	private AppLanguage appLanguage;// Application language

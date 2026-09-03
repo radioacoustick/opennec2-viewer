@@ -13,9 +13,9 @@
         android:title="@string/action_open_file"
         app:showAsAction="ifRoom" />
     <item
-        android:id="@+id/action_start_nec_engine"
+        android:id="@+id/action_stop_nec_engine"
         android:icon="@drawable/ic_settings"
-        android:title="@string/action_start_nec_engine"
+        android:title="@string/action_stop_nec_engine"
         app:showAsAction="never" />
     <item
         android:id="@+id/action_settings"

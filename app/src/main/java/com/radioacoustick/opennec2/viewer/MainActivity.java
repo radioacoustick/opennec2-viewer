@@ -19,6 +19,7 @@
 
 package com.radioacoustick.opennec2.viewer;
 
+import android.Manifest;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -26,6 +27,7 @@ import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.DeadObjectException;
 import android.os.IBinder;
 import android.os.RemoteException;
 import android.util.Log;
@@ -53,11 +55,11 @@ import com.radioacoustick.opennec2.viewer.domain.NecResultViewModel;
 import com.radioacoustick.opennec2.viewer.nec.NecGeometryParser;
 import com.radioacoustick.opennec2.viewer.nec.NecValidator;
 import com.radioacoustick.opennec2.viewer.nec.Wire;
-import com.radioacoustick.opennec2.viewer.ui.utils.EdgeToEdgeHelper;
 import com.radioacoustick.opennec2.viewer.ui.MainHostFragment;
-import com.radioacoustick.opennec2.viewer.ui.utils.UiUtils;
 import com.radioacoustick.opennec2.viewer.ui.graphs.GraphsHostFragment;
 import com.radioacoustick.opennec2.viewer.ui.pattern.PatternFragment;
+import com.radioacoustick.opennec2.viewer.ui.utils.EdgeToEdgeHelper;
+import com.radioacoustick.opennec2.viewer.ui.utils.UiUtils;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -65,6 +67,7 @@ import java.util.concurrent.Executors;
 public class MainActivity extends AppCompatActivity {
 
 	private CircularProgressIndicator progressIndicator;
+	private MenuItem cancelMenuItem;
 	private NecProjectViewModel necProjectViewModel;
 	private NecResultViewModel necResultViewModel;
 	private BottomNavigationView bottomNavigationView;
@@ -74,8 +77,11 @@ public class MainActivity extends AppCompatActivity {
 	private UiUtils uiUtils;
 	private boolean isBound = false;
 
-	// Background thread pool for dispatching heavy IPC tasks to avoid freezing the UI
-	private final ExecutorService executor = Executors.newSingleThreadExecutor();
+	// Background thread pool
+	// First thread is for dispatching heavy IPC tasks to avoid freezing the UI
+	// The second thread is intended to forcefully stop the simulation
+	private final ExecutorService executor = Executors.newFixedThreadPool(2);
+	private Runnable pendingCalculationTask = null;
 
 	private final ServiceConnection serviceConnection = new ServiceConnection() {
 		@Override
@@ -83,12 +89,18 @@ public class MainActivity extends AppCompatActivity {
 			necService = INecService.Stub.asInterface(service);
 			isBound = true;
 			Log.d(TAG, "Connection with C++ service established");
+
+			// If the calculation was waiting for the service to reconnect, this executes it
+			if (pendingCalculationTask != null) {
+				Runnable task = pendingCalculationTask;
+				pendingCalculationTask = null;
+				executor.execute(task);
+			}
 		}
 
 		@Override
 		public void onServiceDisconnected(ComponentName name) {
-			necService = null;
-			isBound = false;
+			cleanupDeadServiceConnection();
 			Log.w(TAG, "The C++ service process crashed or terminated unexpectedly.");
 		}
 	};
@@ -117,8 +129,7 @@ public class MainActivity extends AppCompatActivity {
 	private final ActivityResultLauncher<String> requestPermissionLauncher =
 		 registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
 			 if (isGranted) {
-				 // Permission granted! Now we can safely launch the service.
-				 startNecService();
+				 bindNecService();
 			 } else {
 				 UiUtils.showSnackbar(this, getString(R.string.message_calculation_not_possible));
 			 }
@@ -143,13 +154,15 @@ public class MainActivity extends AppCompatActivity {
 		setContentView(R.layout.activity_main);
 
 		necProjectViewModel = new ViewModelProvider(this).get(NecProjectViewModel.class);
-		necResultViewModel = new ViewModelProvider(MainActivity.this).get(NecResultViewModel.class);
+		necResultViewModel = new ViewModelProvider(this).get(NecResultViewModel.class);
 		uiUtils = new UiUtils(this);
 
 		initViews();
 		uiUtils.handleIncomingIntent(getIntent(), necProjectViewModel);
 
-		uiUtils.loadFragment(new MainHostFragment());
+		if (savedInstanceState == null) {
+			uiUtils.loadFragment(new MainHostFragment());
+		}
 	}
 
 	private void initViews() {
@@ -162,7 +175,6 @@ public class MainActivity extends AppCompatActivity {
 		View mainLayout = contentRoot.getChildAt(0);
 		EdgeToEdgeHelper.applyInsets(getApplicationContext(), mainLayout, toolbar, bottomNavigationView);
 
-		// Switching fragments via Bottom Navigation
 		bottomNavigationView.setOnItemSelectedListener(item -> {
 			Fragment selectedFragment = null;
 			int id = item.getItemId();
@@ -178,7 +190,11 @@ public class MainActivity extends AppCompatActivity {
 		});
 
 		necResultViewModel.getCalculationState().observe(this, state -> {
-			progressIndicator.setVisibility(necResultViewModel.isSimulationRunning() ? View.VISIBLE : View.GONE);
+			boolean isRunning = necResultViewModel.isSimulationRunning();
+			progressIndicator.setVisibility(isRunning ? View.VISIBLE : View.GONE);
+			if (cancelMenuItem != null) {
+				cancelMenuItem.setVisible(isRunning);
+			}
 		});
 
 		necResultViewModel.getSuccessEvent().observe(this, unused -> {
@@ -220,7 +236,6 @@ public class MainActivity extends AppCompatActivity {
 		// Observe the file name changing
 		necProjectViewModel.getFileChangedEvent().observe(this, fileName -> {
 			if (fileName != null && !fileName.isEmpty()) {
-				// Clearing old calculation results when loading a new file
 				necResultViewModel.clearResult();
 				bottomNavigationView.setSelectedItemId(R.id.nav_geometry);
 			}
@@ -230,61 +245,62 @@ public class MainActivity extends AppCompatActivity {
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
 		getMenuInflater().inflate(R.menu.main_menu, menu);
+		cancelMenuItem = menu.findItem(R.id.action_stop_nec_engine);
+		if (cancelMenuItem != null) {
+			cancelMenuItem.setVisible(necResultViewModel.isSimulationRunning());
+		}
 		return true;
 	}
 
 	@Override
 	public boolean onOptionsItemSelected(@NonNull MenuItem item) {
-		if (item.getItemId() == R.id.action_about) {
+		int itemId = item.getItemId();
+		if (itemId == R.id.action_about) {
 			uiUtils.showAboutDialog();
 			return true;
-		}
-		if (item.getItemId() == R.id.action_open_file) {
+		} else if (itemId == R.id.action_open_file) {
 			openFilePicker();
 			return true;
-		}
-		if (item.getItemId() == R.id.action_settings) {
-			//uiUtils.showThemeSelectionDialog();
-			Intent settingsActivity = new Intent(getBaseContext(), SettingsActivity.class);
-			startActivity(settingsActivity);
+		} else if (itemId == R.id.action_settings) {
+			startActivity(new Intent(this, SettingsActivity.class));
 			return true;
-		}
-		if (item.getItemId() == R.id.action_start_nec_engine) {
-			Intent intent = new Intent(this, NecCalculationService.class);
-
-			// 1. Running the service in Foreground mode
-			ContextCompat.startForegroundService(this, intent);
-
-			// 2. AIDL Interface Binding
-			if (!isBound) {
-				bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
-			} else {
-				UiUtils.showSnackbar(this, getString(R.string.message_service_already_running));
-			}
+		} else if (itemId == R.id.action_stop_nec_engine) {
+			forceStopService();
 			return true;
-		}
-		if (item.getItemId() == R.id.action_exit) {
+		} else if (itemId == R.id.action_exit) {
 			exitApplication();
 			return true;
 		}
-
 		return super.onOptionsItemSelected(item);
 	}
 
 	@Override
 	protected void onStart() {
 		super.onStart();
-		String postNotificationsPermission = "android.permission.POST_NOTIFICATIONS";
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-			if (ContextCompat.checkSelfPermission(this, postNotificationsPermission)
-				 == PackageManager.PERMISSION_GRANTED) {
-				startNecService();
+			if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
+				bindNecService();
 			} else {
-				// Request permission for tray notifications
-				requestPermissionLauncher.launch(postNotificationsPermission);
+				requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
 			}
 		} else {
-			startNecService();
+			bindNecService();
+		}
+	}
+
+	private void bindNecService() {
+		if (!isBound) {
+			Intent intent = new Intent(this, NecCalculationService.class);
+			bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
+		}
+	}
+
+	@Override
+	protected void onStop() {
+		super.onStop();
+		if (isBound) {
+			unbindService(serviceConnection);
+			isBound = false;
 		}
 	}
 
@@ -294,25 +310,21 @@ public class MainActivity extends AppCompatActivity {
 		if (necProjectViewModel != null) {
 			necProjectViewModel.updateSettings();
 		}
-
 	}
 
 	@Override
 	protected void onDestroy() {
 		super.onDestroy();
 
-		// 1. Terminate the local thread pool executor
 		if (executor != null && !executor.isShutdown()) {
 			executor.shutdown();
 		}
 
-		// 2. Be sure to unbind ServiceConnection to avoid memory leaks.
 		if (isBound) {
 			unbindService(serviceConnection);
 			isBound = false;
 		}
 
-		// 3. Stop the service ONLY if the user actually closes the Activity, and not just rotates the screen.
 		if (isFinishing()) {
 			stopService(new Intent(this, NecCalculationService.class));
 		}
@@ -324,64 +336,122 @@ public class MainActivity extends AppCompatActivity {
 	 * @param necInput Cleaned source code, standard NEC text format
 	 */
 	public void runNecCalculation(String necInput) {
-		if (!isBound || necService == null) {
-			UiUtils.showSnackbar(findViewById(android.R.id.content), getString(R.string.message_service_not_ready), findViewById(R.id.btn_calculate_main));
-			return;
-		}
-
+		// Clear previous calculation results if any
 		necResultViewModel.clearResult();
-		necResultViewModel.onCalculationStarted();
-		UiUtils.showSnackbar(findViewById(android.R.id.content), getString(R.string.message_simulation_start), findViewById(R.id.btn_calculate_main));
 
-		// IPC call is started in background thread!
-		executor.execute(() -> {
+		// Simulation task
+		Runnable calculationTask = () -> {
+			// 1. Showing the start of the calculation in the UI
+			runOnUiThread(() -> {
+				necResultViewModel.onCalculationStarted();
+				UiUtils.showSnackbar(this, getString(R.string.message_simulation_start));
+			});
+
 			try {
-				// Calling the AIDL method (executed in the :nec_engine process)
+				// 2. Interprocess AIDL call (blocks the current background executor thread)
 				String resultJson = necService.runSimulation(necInput);
-				// Return the result to the main UI thread
-				necResultViewModel.onCalculationSuccess(resultJson);
+
+				// 3. Return the result to the main UI thread
+				runOnUiThread(() -> necResultViewModel.onCalculationSuccess(resultJson));
+
+			} catch (DeadObjectException e) {
+				Log.e(TAG, "IPC error: necpp service process was killed", e);
+				handleServiceDisconnectInUi(getString(R.string.message_service) + ":\n" + getString(R.string.calculation_canceled));
 
 			} catch (RemoteException e) {
 				Log.e(TAG, "IPC communication error with necpp service", e);
-				necResultViewModel.onCalculationFailed(getString(R.string.message_error_service) + ":\n" + e.getLocalizedMessage());
+				handleServiceDisconnectInUi(getString(R.string.message_error_service) + ":\n" + e.getLocalizedMessage());
+
 			} catch (IllegalArgumentException e) {
 				Log.e(TAG, "Error in nec2++ core", e);
-				necResultViewModel.onCalculationFailed(getString(R.string.message_error_nec) + ":\n" + e.getMessage());
+				runOnUiThread(() -> necResultViewModel.onCalculationFailed(getString(R.string.message_error_nec) + ":\n" + e.getMessage()));
+
 			} catch (IllegalStateException e) {
 				Log.e(TAG, "Error in nec2core", e);
-				necResultViewModel.onCalculationFailed(getString(R.string.message_error_nec2core) + ":\n" + e.getMessage());
+				runOnUiThread(() -> necResultViewModel.onCalculationFailed(getString(R.string.message_error_nec2core) + ":\n" + e.getMessage()));
+
 			} catch (Exception e) {
 				Log.e(TAG, "An unexpected exception occurred", e);
-				necResultViewModel.onCalculationFailed(getString(R.string.message_error_unknown) + ":\n" + e.getMessage());
+				runOnUiThread(() -> necResultViewModel.onCalculationFailed(getString(R.string.message_error_unknown) + ":\n" + e.getMessage()));
 			}
+		};
+
+		// Scenario A: The service is alive and Binder is active - start the simulation task immediately
+		if (isBound && necService != null && necService.asBinder().isBinderAlive()) {
+			executor.execute(calculationTask);
+			return;
+		}
+
+		// Scenario B: The process was killed (via cancel/killProcess) - reconnect
+		Log.i(TAG, "Service is not connected or binder is dead. Rebinding before calculation...");
+
+		cleanupDeadServiceConnection();
+
+		// The task is saved for calling in onServiceConnected
+		pendingCalculationTask = calculationTask;
+
+		Intent intent = new Intent(this, NecCalculationService.class);
+		boolean success = bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
+
+		if (!success) {
+			pendingCalculationTask = null;
+			UiUtils.showSnackbar(this, getString(R.string.message_service_not_ready));
+		}
+	}
+
+	/**
+	 * Helper method to safely reset a dead connection
+	 */
+	private void cleanupDeadServiceConnection() {
+		if (isBound) {
+			try {
+				unbindService(serviceConnection);
+			} catch (Exception ignored) {
+			}
+			isBound = false;
+		}
+		necService = null;
+	}
+
+	/**
+	 * Helper method for sending IPC error messages to the UI thread
+	 *
+	 * @param errorMessage Error message
+	 */
+	private void handleServiceDisconnectInUi(String errorMessage) {
+		runOnUiThread(() -> {
+			cleanupDeadServiceConnection();
+			necResultViewModel.onCalculationFailed(errorMessage);
 		});
 	}
 
 	/**
-	 * Start the nec2++ service in an independent process and bind to it.
+	 * Forcefully Stopping the Simulation Service
 	 */
-	private void startNecService() {
-		Intent intent = new Intent(this, NecCalculationService.class);
-		ContextCompat.startForegroundService(this, intent);
-		bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
+	private void forceStopService() {
+		if (necService != null && necResultViewModel.isSimulationRunning()) {
+			executor.execute(() -> {
+				try {
+					Log.d(TAG, "Sending cancel signal to C++ service via AIDL...");
+					necService.cancelSimulation();
+				} catch (RemoteException e) {
+					Log.e(TAG, "Service process was already killed or unreachable", e);
+				} finally {
+					runOnUiThread(() -> necResultViewModel.onCalculationCanceled());
+				}
+			});
+		}
 	}
 
 	/**
 	 * Completely exit the application and stop service
 	 */
 	private void exitApplication() {
-
 		if (isBound) {
 			unbindService(serviceConnection);
 			isBound = false;
 		}
-
-		Intent stopServiceIntent = new Intent(this, NecCalculationService.class);
-		stopService(stopServiceIntent);
-
+		stopService(new Intent(this, NecCalculationService.class));
 		finishAndRemoveTask();
-
-		System.exit(0);
 	}
-
 }
