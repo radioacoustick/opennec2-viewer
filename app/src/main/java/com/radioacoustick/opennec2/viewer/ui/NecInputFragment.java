@@ -111,11 +111,11 @@ public class NecInputFragment extends Fragment {
 		necProjectViewModel.getRawNecText().observe(getViewLifecycleOwner(), text -> {
 			if (text != null) {
 				etNecInput.setText(text);
-				NecValidator.ValidationResult validation = NecValidator.validateNecText(requireContext(), text);
-				if (validation.isValid) {
+				NecValidator.ValidationResult validationResult = NecValidator.validateNecText(text);
+				if (validationResult.isValid) {
 					necProjectViewModel.processCleanedNecText(text);
 				} else {
-					UiUtils.showSnackbar(requireView(), validation.errorMessage, null);
+					UiUtils.showSnackbar(requireView(), validationResult.getFormattedErrorMessage(requireContext()), null);
 				}
 			}
 		});
@@ -141,22 +141,22 @@ public class NecInputFragment extends Fragment {
 			if (getActivity() instanceof MainActivity) {
 				String cleanText = necProjectViewModel.getCleanedNecText().getValue();
 				if (cleanText != null && !cleanText.isEmpty()) {
-					NecValidator.ValidationResult validation = NecValidator.validateNecText(requireContext(), cleanText);
+					NecValidator.ValidationResult validation = NecValidator.validateNecText(cleanText);
 					// The frequency value selection dialog is shown if there is no FR card in the file.
 					if (!validation.hasFrCard) {
 						UiUtils.showFrequencyInputDialog(requireActivity(), (isConfirmed, frequencyMHz) -> {
 							if (isConfirmed) {
 								String preparedText = NecHelper.injectSingleFrCard(cleanText, frequencyMHz);
+								// Starting a new NEC2 calculation
 								((MainActivity) requireActivity()).runNecCalculation(preparedText);
 							} else {
 								necResultViewModel.onCalculationCanceled();
 							}
 						});
 					} else {
+						// Starting a new NEC2 calculation
 						((MainActivity) requireActivity()).runNecCalculation(cleanText);
 					}
-					// Starting a new NEC2 calculation
-
 				}
 			}
 		});

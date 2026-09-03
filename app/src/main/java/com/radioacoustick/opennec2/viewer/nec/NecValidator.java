@@ -23,6 +23,8 @@ import static com.radioacoustick.opennec2.viewer.ui.utils.UiUtils.getFileNameFro
 
 import android.content.Context;
 import android.net.Uri;
+import androidx.annotation.Nullable;
+import androidx.annotation.StringRes;
 
 import com.radioacoustick.opennec2.viewer.R;
 
@@ -41,43 +43,57 @@ import java.util.regex.Pattern;
  */
 public class NecValidator {
 
-	private static final Pattern WHITE_SPACE = Pattern.compile("\\s+");
-
 	/**
 	 * Structure of the NEC-text validation result
 	 */
 	public static class ValidationResult {
 		public final boolean isValid;
 		public final boolean hasFrCard;
-		public final String errorMessage;
+		@StringRes public final int errorMessageResId;
+		@Nullable public final String errorArg;
 
-		public ValidationResult(boolean isValid, boolean hasFrCard, String errorMessage) {
+		// Constructor for a successful result
+		public ValidationResult(boolean isValid, boolean hasFrCard) {
+			this(isValid, hasFrCard, 0, null);
+		}
+
+		// Constructor for a result with an error
+		public ValidationResult(boolean isValid, boolean hasFrCard, @StringRes int errorMessageResId, @Nullable String errorArg) {
 			this.isValid = isValid;
 			this.hasFrCard = hasFrCard;
-			this.errorMessage = errorMessage;
+			this.errorMessageResId = errorMessageResId;
+			this.errorArg = errorArg;
+		}
+
+		/**
+		 * Formatting error strings for display in the user interface.
+		 */
+		@Nullable
+		public String getFormattedErrorMessage(Context context) {
+			if (errorMessageResId == 0 || context == null) return null;
+			if (errorArg != null) {
+				return context.getString(errorMessageResId) + " " + errorArg;
+			}
+			return context.getString(errorMessageResId);
 		}
 	}
 
 	/**
-	 * Returns the results of checking the NEC-file for the required cards.
+	 * Returns the results of checking the NEC-text for the required cards.
+	 * Safe to call from ViewModel or background threads (does not require Context).
 	 *
-	 * @param context Current context
 	 * @param rawText Source NEC-text
 	 * @return ValidationResult
 	 */
-	public static ValidationResult validateNecText(Context context, String rawText) {
+	public static ValidationResult validateNecText(String rawText) {
 		if (rawText == null || rawText.trim().isEmpty()) {
-			return new ValidationResult(false, false, "");
+			return new ValidationResult(false, false);
 		}
-
-		// The presence of the EN card, and its addition if missing, is checked during subsequent text processing.
-		// This check is commented out here. It can be enabled if necessary.
 
 		boolean hasGeometryCard = false;
 		boolean hasGeCard = false;
 		boolean hasExCard = false;
 		boolean hasFrCard = false;
-		//boolean hasEnCard = false;
 
 		String cardRegex = "(?i)\\b(GW|GA|GH|GR|GS|GE|EX|EN|FR)\\b";
 		Matcher matcher = Pattern.compile(cardRegex).matcher(rawText);
@@ -86,27 +102,38 @@ public class NecValidator {
 			String card = Objects.requireNonNull(matcher.group(1)).toUpperCase(Locale.US);
 			switch (card) {
 				case "GW": case "GA": case "GH": case "GR": case "GS":
-					hasGeometryCard = true; break;
-				case "GE": hasGeCard = true; break;
-				case "EX": hasExCard = true; break;
-				case "FR": hasFrCard = true; break;
-				//case "EN": hasEnCard = true; break;
+					hasGeometryCard = true;
+					break;
+				case "GE":
+					hasGeCard = true;
+					break;
+				case "EX":
+					hasExCard = true;
+					break;
+				case "FR":
+					hasFrCard = true;
+					break;
 			}
 		}
 
-		if (!hasGeometryCard) return new ValidationResult(false, false, context.getString(R.string.message_warning_missing_card) + " GW/GA");
-		if (!hasGeCard) return new ValidationResult(false, false, context.getString(R.string.message_warning_missing_card) + " GE");
-		if (!hasExCard) return new ValidationResult(false, false, context.getString(R.string.message_warning_missing_card) + " EX");
-		//if (!hasEnCard) return new ValidationResult(false, false, context.getString(R.string.warning_missing_card) + " EN");
+		if (!hasGeometryCard) {
+			return new ValidationResult(false, false, R.string.message_warning_missing_card, "GW/GA");
+		}
+		if (!hasGeCard) {
+			return new ValidationResult(false, false, R.string.message_warning_missing_card, "GE");
+		}
+		if (!hasExCard) {
+			return new ValidationResult(false, false, R.string.message_warning_missing_card, "EX");
+		}
 
-		return new ValidationResult(true, hasFrCard, null);
+		return new ValidationResult(true, hasFrCard);
 	}
 
 	/**
 	 * Quickly check the file URI before reading.
 	 */
 	public static boolean isNecFile(Context context, Uri uri) {
-		if (uri == null) return false;
+		if (uri == null || context == null) return false;
 
 		// 1. Check by file extension (if name available)
 		String fileName = getFileNameFromUri(context, uri);
@@ -125,6 +152,8 @@ public class NecValidator {
 	 * Scan the first N lines of a file for NEC base cards.
 	 */
 	private static boolean containsNecHeaderCards(Context context, Uri uri) {
+		if (context == null || uri == null) return false;
+
 		final int MAX_LINES_TO_CHECK = 40;
 		int checkedLines = 0;
 

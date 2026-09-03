@@ -36,17 +36,14 @@ import android.widget.FrameLayout;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.widget.NestedScrollView;
 import androidx.fragment.app.Fragment;
 
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.snackbar.Snackbar;
-import com.radioacoustick.opennec2.viewer.M_Application;
 import com.radioacoustick.opennec2.viewer.R;
 import com.radioacoustick.opennec2.viewer.domain.NecProjectViewModel;
-import com.radioacoustick.opennec2.viewer.settings.AppSettings;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -110,8 +107,9 @@ public class UiUtils {
 	 */
 	public void readNecFromUri(Uri uri, NecProjectViewModel necProjectViewModel) {
 		StringBuilder stringBuilder = new StringBuilder();
-		try (InputStream inputStream = activity.getContentResolver().openInputStream(uri);
-			  BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
+		try (
+			 InputStream inputStream = activity.getContentResolver().openInputStream(uri);
+			 BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
 
 			String line;
 			while ((line = reader.readLine()) != null) {

@@ -114,9 +114,9 @@ public class MainActivity extends AppCompatActivity {
 			 if (uri != null) {
 				 if (!NecValidator.isNecFile(this, uri)) {
 					 UiUtils.showSnackbar(this, getString(R.string.message_error_invalid_file_format));
-					 return;
+				 }else {
+					 uiUtils.readNecFromUri(uri, necProjectViewModel);
 				 }
-				 uiUtils.readNecFromUri(uri, necProjectViewModel);
 			 }
 		 }
 	);

@@ -157,12 +157,14 @@ public class NecProjectViewModel extends ViewModel {
 			return;
 		}
 
-		NecValidator.ValidationResult validation = NecValidator.validateNecText(null, text);
-		if (!validation.isValid) {
+		NecValidator.ValidationResult validationResult = NecValidator.validateNecText(text);
+		if (!validationResult.isValid) {
+			cleanedNecText.setValue("");
+			clearGeometry();
 			return;
 		}
 
-		if (validation.hasFrCard) {
+		if (validationResult.hasFrCard) {
 			processCleanedNecText(text);
 		}
 	}
