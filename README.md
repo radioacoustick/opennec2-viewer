@@ -10,7 +10,7 @@ powered by NEC2++.
 ## Features
 
 - NEC2++ simulation engine
-- Android Foreground Service execution
+- Android Service-based simulation execution
 - JSON-based result exchange
 - Native C++ core via Android NDK
 
@@ -18,7 +18,7 @@ powered by NEC2++.
 
 ```text
 app/        Android UI
-nec2core/   Native NEC2++ integration and Foreground Service
+nec2core/   Native NEC2++ integration and simulation engine
 external/   Third-party sources and libraries
 ```
 

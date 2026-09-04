@@ -19,14 +19,14 @@
 
 package com.radioacoustick.nec2core;
 
+import android.Manifest;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
-import android.content.Context;
 import android.content.Intent;
-import android.content.pm.ServiceInfo;
+import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.Process;
@@ -35,16 +35,19 @@ import android.util.Log;
 
 import androidx.annotation.Keep;
 import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
+import androidx.core.content.ContextCompat;
 
 /**
- * Isolated service for performing background calculations NEC (Numerical Electromagnetics Code).
+ * Isolated background service executing in dedicated process (:nec_engine_process)
+ * for heavy C++ NEC calculations.
  */
 @Keep
 public class NecCalculationService extends Service {
 
 	private static final String TAG = "NecCalculationService";
 	public static final String ACTION_STOP_SERVICE = "com.radioacoustick.nec2core.ACTION_STOP_NEC_SERVICE";
-	private static final String CHANNEL_ID = "nec_channel";
+	private static final String CHANNEL_ID = "nec_calculation_channel";
 	private static final int NOTIFICATION_ID = 1001;
 
 	static {
@@ -55,23 +58,21 @@ public class NecCalculationService extends Service {
 	private native String runNecCalculationNative(String input);
 
 	private final INecService.Stub binder = new INecService.Stub() {
+
 		@Override
 		public String runSimulation(String necInputContent) throws RemoteException {
-			// 1. The hard work has begun -> launching Foreground Service
-			startForegroundServiceInternal();
+			showNotification();
 			try {
-				// 2. Performing calculations in C++
 				return runNecCalculationNative(necInputContent);
 			} finally {
-				// 3. Stopping the Service after completion or after an error
-				stopForegroundInternal();
+				hideNotification();
 			}
 		}
 
 		@Override
 		public void cancelSimulation() throws RemoteException {
-			Log.d(TAG, "Cancel calculation requested by user.");
-			stopServiceAndKillProcess();
+			Log.w(TAG, "Calculation cancel requested. Terminating engine process.");
+			killEngineProcess();
 		}
 	};
 
@@ -84,56 +85,56 @@ public class NecCalculationService extends Service {
 	@Override
 	public int onStartCommand(Intent intent, int flags, int startId) {
 		if (intent != null && ACTION_STOP_SERVICE.equals(intent.getAction())) {
-			Log.w(TAG, "Stop action received from notification. Killing process " + Process.myPid());
-			stopServiceAndKillProcess();
+			Log.w(TAG, "Stop action received from notification intent.");
+			killEngineProcess();
 			return START_NOT_STICKY;
 		}
 		return START_NOT_STICKY;
 	}
 
-	private void startForegroundServiceInternal() {
-		Notification notification = createNotification();
-
-		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-			startForeground(
-				 NOTIFICATION_ID,
-				 notification,
-				 ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
-			);
-		} else {
-			startForeground(NOTIFICATION_ID, notification);
+	private void showNotification() {
+		// Checking permissions for Android 13+
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+			if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+				 != PackageManager.PERMISSION_GRANTED) {
+				Log.d(TAG, "Notification skipped: POST_NOTIFICATIONS permission not granted.");
+				return;
+			}
+		}
+		try {
+			NotificationManagerCompat.from(this).notify(NOTIFICATION_ID, createNotification());
+		} catch (SecurityException e) {
+			Log.e(TAG, "Failed to post notification", e);
 		}
 	}
 
-	private void stopForegroundInternal() {
-		stopForeground(STOP_FOREGROUND_REMOVE);
+	private void hideNotification() {
+		try {
+			NotificationManagerCompat.from(this).cancel(NOTIFICATION_ID);
+		} catch (Exception e) {
+			Log.e(TAG, "Failed to cancel notification", e);
+		}
 	}
 
 	private Notification createNotification() {
 		Intent stopIntent = new Intent(this, NecCalculationService.class);
 		stopIntent.setAction(ACTION_STOP_SERVICE);
 
-		int pendingFlags = PendingIntent.FLAG_UPDATE_CURRENT;
-		pendingFlags |= PendingIntent.FLAG_IMMUTABLE;
-
+		int flags = PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE;
 		PendingIntent stopPendingIntent = PendingIntent.getService(
 			 this,
 			 0,
 			 stopIntent,
-			 pendingFlags
+			 flags
 		);
 
 		return new NotificationCompat.Builder(this, CHANNEL_ID)
 			 .setContentTitle(getString(R.string.notification_title))
-			 .setContentText(getText(R.string.notification_content))
+			 .setContentText(getString(R.string.notification_content))
 			 .setSmallIcon(R.drawable.ic_nec)
 			 .setOngoing(true)
 			 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-			 .addAction(
-				  R.drawable.ic_cancel,
-				  getString(R.string.stop),
-				  stopPendingIntent
-			 )
+			 .addAction(R.drawable.ic_cancel, getString(R.string.stop), stopPendingIntent)
 			 .build();
 	}
 
@@ -146,7 +147,7 @@ public class NecCalculationService extends Service {
 			);
 			channel.setDescription(getString(R.string.notification_channel_descript));
 
-			NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+			NotificationManager manager = getSystemService(NotificationManager.class);
 			if (manager != null) {
 				manager.createNotificationChannel(channel);
 			}
@@ -161,25 +162,19 @@ public class NecCalculationService extends Service {
 	@Override
 	public void onTaskRemoved(Intent rootIntent) {
 		super.onTaskRemoved(rootIntent);
-		Log.w(TAG, "Application closed. Terminating C++ process: " + Process.myPid());
-		stopServiceAndKillProcess();
+		Log.w(TAG, "Main application UI was closed. Killing calculation process.");
+		killEngineProcess();
 	}
 
-	// Since the service is isolated in a separate process (:nec_engine_process),
-	// killProcess immediately terminates the running C++ code.
-	private void stopServiceAndKillProcess() {
-		NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-		if (manager != null) {
-			manager.cancel(NOTIFICATION_ID);
-		}
-		stopForegroundInternal();
-		stopSelf();
+	private void killEngineProcess() {
+		hideNotification();
 		Process.killProcess(Process.myPid());
 	}
 
 	@Override
 	public void onDestroy() {
+		hideNotification();
+		Log.d(TAG, "NecCalculationService destroyed.");
 		super.onDestroy();
-		Log.d(TAG, "NecCalculationService has been destroyed.");
 	}
 }

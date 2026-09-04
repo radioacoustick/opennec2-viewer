@@ -19,13 +19,10 @@
 
 package com.radioacoustick.opennec2.viewer;
 
-import android.Manifest;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
-import android.content.pm.PackageManager;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.DeadObjectException;
 import android.os.IBinder;
@@ -35,12 +32,12 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 
@@ -50,6 +47,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.progressindicator.CircularProgressIndicator;
 import com.radioacoustick.nec2core.INecService;
 import com.radioacoustick.nec2core.NecCalculationService;
+import com.radioacoustick.opennec2.viewer.domain.CalculationState;
 import com.radioacoustick.opennec2.viewer.domain.NecProjectViewModel;
 import com.radioacoustick.opennec2.viewer.domain.NecResultViewModel;
 import com.radioacoustick.opennec2.viewer.nec.NecGeometryParser;
@@ -114,26 +112,12 @@ public class MainActivity extends AppCompatActivity {
 			 if (uri != null) {
 				 if (!NecValidator.isNecFile(this, uri)) {
 					 UiUtils.showSnackbar(this, getString(R.string.message_error_invalid_file_format));
-				 }else {
+				 } else {
 					 uiUtils.readNecFromUri(uri, necProjectViewModel);
 				 }
 			 }
 		 }
 	);
-
-	/**
-	 * When the application is first launched, it asks for permission
-	 * to display notifications that are necessary
-	 * for the nec2++ modeling service to function correctly.
-	 */
-	private final ActivityResultLauncher<String> requestPermissionLauncher =
-		 registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
-			 if (isGranted) {
-				 bindNecService();
-			 } else {
-				 UiUtils.showSnackbar(this, getString(R.string.message_calculation_not_possible));
-			 }
-		 });
 
 	/**
 	 * Launching System Explorer to manually select the .nec file
@@ -190,10 +174,15 @@ public class MainActivity extends AppCompatActivity {
 		});
 
 		necResultViewModel.getCalculationState().observe(this, state -> {
-			boolean isRunning = necResultViewModel.isSimulationRunning();
+			boolean isRunning = (state == CalculationState.RUNNING);
 			progressIndicator.setVisibility(isRunning ? View.VISIBLE : View.GONE);
 			if (cancelMenuItem != null) {
 				cancelMenuItem.setVisible(isRunning);
+			}
+			if (isRunning) {
+				getWindow().addFlags( WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+			} else {
+				getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 			}
 		});
 
@@ -277,15 +266,7 @@ public class MainActivity extends AppCompatActivity {
 	@Override
 	protected void onStart() {
 		super.onStart();
-		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-			if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
-				bindNecService();
-			} else {
-				requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
-			}
-		} else {
-			bindNecService();
-		}
+		bindNecService();
 	}
 
 	private void bindNecService() {
