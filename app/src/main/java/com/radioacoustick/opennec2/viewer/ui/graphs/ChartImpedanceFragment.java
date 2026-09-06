@@ -51,7 +51,7 @@ public class ChartImpedanceFragment extends Fragment {
 		viewModel.getNecResult().observe(getViewLifecycleOwner(), result -> {
 			if (result != null && result.frequencies != null) {
 				GraphsHelper.displayGraph(chartRenderer, result.frequencies, result.resistance, result.reactance,
-					 getString(R.string.resistance) + " (R)", getString(R.string.reactance) + " (X)");
+					 getString(R.string.resistance) + " (Ω)", getString(R.string.reactance) + " (Ω)");
 			}
 		});
 

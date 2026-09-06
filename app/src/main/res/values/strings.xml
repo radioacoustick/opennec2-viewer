@@ -39,11 +39,11 @@
     <string name="message_error_service">The service is unavailable. Please try again later.</string>
     <string name="message_error_unknown">An unexpected exception occurred</string>
     <string name="message_freq_not_found">The file is missing an FR card. Please enter the calculation frequency (MHz).</string>
+    <string name="message_service">Service message</string>
     <string name="message_service_not_ready">The calculation service is not ready yet! Please wait for notification about service connection.</string>
     <string name="message_simulation_start">The simulation has been started</string>
     <string name="message_simulation_success_">The simulation was completed successfully</string>
     <string name="message_warning_missing_card">Missing card</string>
-    <string name="message_service">Service message</string>
     <string name="no_graph_data">There is no data for the graph</string>
     <string name="original_control_cards">Use original control cards FR/RP</string>
     <string name="pattern">Pattern</string>
@@ -57,7 +57,7 @@
     <string name="start_mhz">Start (MHz)</string>
     <string name="stop_mhz">Stop (MHz)</string>
     <string name="sweep_parameters">Sweep Parameters</string>
-    <string name="swr">SWR</string>
+    <string name="swr">VSWR</string>
     <string name="system_impedance">System impedance (Zo)</string>
     <string name="target_frequency">Target Frequency</string>
     <string name="text_area_hint">Antenna input NEC-code</string>

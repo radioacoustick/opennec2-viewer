@@ -1,7 +1,6 @@
-# Open NEC2 Viewer
+# Open NEC2 Viewer for Android
 
-Open NEC2 Viewer is an Android antenna modeling application
-powered by NEC2++.
+Open NEC2 Viewer is an Android app powered by the NEC2++ engine. It allows you to open *.nec model files, view 3D antenna geometry, and simulate antenna Radiation Pattern and frequency responses on your mobile device.
 
 <p align="center">
   <img src="docs/screenshot.png" alt="Open NEC2 Viewer Preview" width="300">

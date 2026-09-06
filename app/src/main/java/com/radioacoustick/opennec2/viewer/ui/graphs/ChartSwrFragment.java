@@ -32,6 +32,7 @@ import com.radioacoustick.opennec2.viewer.M_Application;
 import com.radioacoustick.opennec2.viewer.R;
 import com.radioacoustick.opennec2.viewer.domain.NecResultViewModel;
 import com.radioacoustick.opennec2.viewer.math.AntennaMath;
+import com.radioacoustick.opennec2.viewer.settings.FloatInputSaveHelper;
 
 /**
  * A fragment containing a MPAndroidChart widget for displaying VSWR graph
@@ -57,7 +58,13 @@ public class ChartSwrFragment extends Fragment {
 			if (result != null && result.frequencies != null) {
 				float z0 = M_Application.getSettings().getSystemImpedance();
 				float[] swrValues = AntennaMath.calculateSwr(result.resistance, result.reactance, z0);
-				GraphsHelper.displayGraph(chartRenderer, result.frequencies, swrValues, getString(R.string.swr), true);
+				GraphsHelper.displayGraph(
+					 chartRenderer,
+					 result.frequencies,
+					 swrValues,
+					 getString(R.string.swr) + " @ " + FloatInputSaveHelper.FLOAT_FORMAT.format(z0) + " Ω",
+					 true
+				);
 			}
 		});
 

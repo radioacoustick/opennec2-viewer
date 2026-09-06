@@ -133,7 +133,9 @@ public class NecCalculationService extends Service {
 			 .setContentText(getString(R.string.notification_content))
 			 .setSmallIcon(R.drawable.ic_nec)
 			 .setOngoing(true)
-			 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+			 .setPriority(NotificationCompat.PRIORITY_LOW)
+			 .setSound(null)
+			 .setVibrate(new long[]{0L})
 			 .addAction(R.drawable.ic_cancel, getString(R.string.stop), stopPendingIntent)
 			 .build();
 	}
@@ -143,9 +145,11 @@ public class NecCalculationService extends Service {
 			NotificationChannel channel = new NotificationChannel(
 				 CHANNEL_ID,
 				 getString(R.string.notification_channel_name),
-				 NotificationManager.IMPORTANCE_DEFAULT
+				 NotificationManager.IMPORTANCE_LOW
 			);
 			channel.setDescription(getString(R.string.notification_channel_descript));
+			channel.setSound(null, null);
+			channel.enableVibration(false);
 
 			NotificationManager manager = getSystemService(NotificationManager.class);
 			if (manager != null) {
