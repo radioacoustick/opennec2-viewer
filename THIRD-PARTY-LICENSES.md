@@ -45,6 +45,11 @@ This project includes third-party software distributed with the source code and 
 - Copyright (c) Philipp Jahoda
 - https://github.com/PhilJay/MPAndroidChart
 
+## exp4j
+- License: Apache License 2.0
+- SPDX-License-Identifier: Apache-2.0
+- https://github.com/fasseg/exp4j
+
 ## Material Components for Android
 - License: Apache License 2.0
 - SPDX-License-Identifier: Apache-2.0

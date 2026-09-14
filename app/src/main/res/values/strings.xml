@@ -34,8 +34,9 @@
     <string name="message_calculation_not_possible">"Without notification permissions, calculation is not possible.</string>
     <string name="message_error_freq_not_found">Incorrect frequency</string>
     <string name="message_error_invalid_file_format">Invalid file format</string>
-    <string name="message_error_nec">nec2++ core error</string>
+    <string name="message_error_nec">NEC2++ engine error</string>
     <string name="message_error_nec2core">Nec2core error</string>
+    <string name="message_error_parsing">An unexpected error occurred while parsing the file.</string>
     <string name="message_error_service">The service is unavailable. Please try again later.</string>
     <string name="message_error_unknown">An unexpected exception occurred</string>
     <string name="message_freq_not_found">The file is missing an FR card. Please enter the calculation frequency (MHz).</string>

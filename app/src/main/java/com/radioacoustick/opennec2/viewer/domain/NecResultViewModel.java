@@ -61,13 +61,17 @@ public class NecResultViewModel extends ViewModel {
 	/**
 	 * Called when data is successfully returned from nec2++
 	 */
-	public void onCalculationSuccess(String resultJson) {
+	public void onCalculationSuccess(String resultJson, String errorMessage) {
 		// Saving the calculated data...
 		Gson gson = new Gson();
 		NecResult result = NecResult.parseFromJson(resultJson, gson);
-		necResultLiveData.postValue(result);
-		calculationState.postValue(CalculationState.SUCCESS);
-		successEvent.postValue(null);
+		if(result != null) {
+			necResultLiveData.postValue(result);
+			calculationState.postValue(CalculationState.SUCCESS);
+			successEvent.postValue(null);
+		} else {
+			onCalculationFailed(errorMessage);
+		}
 	}
 
 	/**

@@ -113,7 +113,9 @@ public class NecInputFragment extends Fragment {
 				etNecInput.setText(text);
 				NecValidator.ValidationResult validationResult = NecValidator.validateNecText(text);
 				if (validationResult.isValid) {
-					necProjectViewModel.processCleanedNecText(text);
+					boolean isCleanTextExist = necProjectViewModel.processCleanedNecText(text);
+					if(!isCleanTextExist)
+						UiUtils.showSnackbar(requireActivity(), getString(R.string.message_error_parsing));
 				} else {
 					UiUtils.showSnackbar(requireView(), validationResult.getFormattedErrorMessage(requireContext()), null);
 				}

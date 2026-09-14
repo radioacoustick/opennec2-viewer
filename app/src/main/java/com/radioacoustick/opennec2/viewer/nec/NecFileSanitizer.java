@@ -19,7 +19,13 @@
 
 package com.radioacoustick.opennec2.viewer.nec;
 
+import android.util.Log;
+
 import com.radioacoustick.opennec2.viewer.M_Application;
+import com.radioacoustick.opennec2.viewer.math.Custom4Nec2Functions;
+
+import net.objecthunter.exp4j.Expression;
+import net.objecthunter.exp4j.ExpressionBuilder;
 
 import java.math.BigDecimal;
 import java.util.Arrays;
@@ -43,7 +49,7 @@ public class NecFileSanitizer {
 	// reads and processes SY cards of the 4NEC2 format
 	// -------------------------------------------------------------
 
-	private final Map<String, Double> variables = new HashMap<>();
+	private final Map<String, Float> variables = new HashMap<>();
 	private static final Pattern AWG_PATTERN = Pattern.compile("#(\\d{1,2})");
 
 	// Standard NEC-2 control cards
@@ -64,76 +70,81 @@ public class NecFileSanitizer {
 			return "";
 		}
 
-		// 1. Clearing invisible characters and NBSP
-		String rawNecText = source.replace('\u00A0', ' ')
-			 .replace("\u1680", " ")
-			 .replace("\u2000", " ")
-			 .replace("\u2008", " ")
-			 .replace("\u202F", " ");
+		try {
+			// 1. Clearing invisible characters and NBSP
+			String rawNecText = source.replace('\u00A0', ' ')
+				 .replace("\u1680", " ")
+				 .replace("\u2000", " ")
+				 .replace("\u2008", " ")
+				 .replace("\u202F", " ");
 
-		boolean hasGround = false;
-		boolean frProcessed = false;
-		boolean rpProcessed = false;
-		boolean isOriginalControlCards = M_Application.getSettings().isOriginalControlCards();
+			boolean hasGround = false;
+			boolean frProcessed = false;
+			boolean rpProcessed = false;
+			boolean isOriginalControlCards = M_Application.getSettings().isOriginalControlCards();
 
-		// 2. Clearing all comments
-		StringBuilder withoutComments = new StringBuilder();
-		String[] rawLines = rawNecText.split("\\r?\\n");
-		for (String rawLine : rawLines) {
-			String line = removeComments(rawLine).trim();
-			if (line.isEmpty() || isCommentCard(line)) continue;
-			withoutComments.append(line).append("\n");
-		}
-
-		// 3. Converting a single-line file to a multi-line format, where each card starts on a new line,
-		// and then splitting the file into an array of card-lines.
-		StringBuilder result = new StringBuilder();
-		variables.clear();
-		String normalizedText = normalizeNecStructure(withoutComments.toString());
-		String[] normalizedLines = normalizedText.split("\\r?\\n");
-
-		for (String line : normalizedLines) {
-
-			String upperLine = line.toUpperCase(Locale.US);
-
-			// 4.Processing SY cards
-			if (upperLine.startsWith("SY ")) {
-				parseSymbol(line.substring(3).trim());
-				continue;
+			// 2. Clearing all comments
+			StringBuilder withoutComments = new StringBuilder();
+			String[] rawLines = rawNecText.split("\\r?\\n");
+			for (String rawLine : rawLines) {
+				String line = removeComments(rawLine).trim();
+				if (line.isEmpty() || isCommentCard(line)) continue;
+				withoutComments.append(line).append("\n");
 			}
 
-			// 5. Calculation and substitution of variables for the current line
-			String processedLine = evaluateAndReplaceLine(line);
-			upperLine = processedLine.toUpperCase(Locale.US);
+			// 3. Converting a single-line file to a multi-line format
+			StringBuilder result = new StringBuilder();
+			variables.clear();
+			String normalizedText = normalizeNecStructure(withoutComments.toString());
+			String[] normalizedLines = normalizedText.split("\\r?\\n");
 
-			// 6. Checking the presence of ground (GN)
-			if (upperLine.startsWith("GN")) {
-				hasGround = parseGroundPresence(processedLine);
-				result.append(processedLine).append("\n");
-				continue;
-			}
+			for (String line : normalizedLines) {
+				String upperLine = line.toUpperCase(Locale.US);
 
-			// 7. FR and RP processing with the switch off
-			if (!isOriginalControlCards) {
-				if (upperLine.startsWith("FR")) {
-					if (frProcessed) continue; // Skipping duplicate FRs
-					processedLine = NecHelper.generateDefaultFrCard(processedLine);
-					frProcessed = true;
-				} else if (upperLine.startsWith("RP")) {
-					if (rpProcessed) continue; // Skipping duplicate RPs
-					processedLine = NecHelper.generateDefaultRpCard(hasGround);
-					rpProcessed = true;
+				// 4. Processing SY cards
+				if (upperLine.startsWith("SY ")) {
+					parseSymbol(line.substring(3).trim());
+					continue;
 				}
+
+				// 5. Calculation and substitution of variables for the current line
+				String processedLine = evaluateAndReplaceLine(line);
+				upperLine = processedLine.toUpperCase(Locale.US);
+
+				// 6. Checking the presence of ground (GN)
+				if (upperLine.startsWith("GN")) {
+					hasGround = parseGroundPresence(processedLine);
+					result.append(processedLine).append("\n");
+					continue;
+				}
+
+				// 7. FR and RP processing with the switch off
+				if (!isOriginalControlCards) {
+					if (upperLine.startsWith("FR")) {
+						if (frProcessed) continue; // Skipping duplicate FRs
+						processedLine = NecHelper.generateDefaultFrCard(processedLine);
+						frProcessed = true;
+					} else if (upperLine.startsWith("RP")) {
+						if (rpProcessed) continue; // Skipping duplicate RPs
+						processedLine = NecHelper.generateDefaultRpCard(hasGround);
+						rpProcessed = true;
+					}
+				}
+
+				result.append(processedLine).append("\n");
 			}
 
-			result.append(processedLine).append("\n");
+			// 8. Final text cleaning
+			String sanitized = sanitizeNecText(result.toString());
+
+			// 9. Checking and adding missing RP/EN cards if they were not in the file
+			return NecHelper.ensureRequiredCards(sanitized, hasGround);
+
+		} catch (Exception e) {
+			// Protection against any unhandled parsing failures
+			Log.e("NecFileSanitizer", "Error sanitizing NEC file", e);
+			return "";
 		}
-
-		// 8. Final text cleaning
-		String sanitized = sanitizeNecText(result.toString());
-
-		// 9. Checking and adding missing RP/EN cards if they were not in the file
-		return NecHelper.ensureRequiredCards(sanitized, hasGround);
 	}
 
 	/**
@@ -144,38 +155,29 @@ public class NecFileSanitizer {
 	 */
 	private boolean parseGroundPresence(String gnLine) {
 		String[] tokens = gnLine.trim().split("\\s+");
-		// Minimum format: GN IPERF (at least 2 tokens)
 		if (tokens.length >= 2) {
 			try {
-				// Read the 1st parameter (IPERF / Ground Type)
 				int iperf = (int) Float.parseFloat(tokens[1]);
 				return iperf >= 0;
 			} catch (NumberFormatException e) {
-				// If parsing fails, we assume that there is ground (for safety)
 				return true;
 			}
 		}
 		return false;
 	}
 
-
 	/**
 	 * Restores the standard line-by-line structure of a NEC2 file
 	 * if line breaks are in random places or are absent
 	 */
 	private static String normalizeNecStructure(String rawText) {
-
 		if (rawText == null || rawText.trim().isEmpty()) {
 			return "";
 		}
 
-		// 1. Replace any line breaks, tabs, and multiple spaces with a single space.
 		String singleLine = rawText.replaceAll("[\\r\\n\\t]+", " ").replaceAll("\\s+", " ").trim();
-
-		// 2. List of basic NEC2 control cards
 		String cardTypes = "CM|CE|SY|GW|GA|GH|GR|GS|GE|GN|EK|EX|FR|LD|TL|NT|CP|RP|XQ|EN";
 
-		// Regular expression: Searches for 2-letter card tags as separate words
 		Pattern pattern = Pattern.compile("(?i)\\b(" + cardTypes + ")\\b");
 		Matcher matcher = pattern.matcher(singleLine);
 
@@ -183,7 +185,6 @@ public class NecFileSanitizer {
 		int lastMatchEnd = 0;
 
 		while (matcher.find()) {
-			// Take the text-fragment between the previous and current cards and form it as a separate line
 			String segment = singleLine.substring(lastMatchEnd, matcher.start()).trim();
 			if (!segment.isEmpty()) {
 				sb.append(segment).append("\n");
@@ -191,7 +192,6 @@ public class NecFileSanitizer {
 			lastMatchEnd = matcher.start();
 		}
 
-		// Add the last remainder (for example, the parameters of the EN card or the EN itself)
 		if (lastMatchEnd < singleLine.length()) {
 			sb.append(singleLine.substring(lastMatchEnd).trim());
 		}
@@ -220,29 +220,78 @@ public class NecFileSanitizer {
 	}
 
 	/**
-	 * Parsing a variable card (SY) into a symbol-value pair and store it in the variables set
+	 * Parsing a variable card (SY) into a symbol-value pair using exp4j.
 	 */
 	private void parseSymbol(String expression) {
-		String[] parts = expression.split("=");
+		String[] parts = expression.split("=", 2);
 		if (parts.length != 2) return;
 
-		String varName = parts[0].trim();
+		String rawVarName = parts[0].trim();
 		String mathExpr = parts[1].trim();
 
-		double value = evaluateMath(mathExpr);
-		variables.put(varName, value);
+		// 1. Приводим выражение к безопасному виду (заменяем имена известных переменных)
+		String safeMathExpr = sanitizeExpression(mathExpr);
+
+		// 2. Вычисляем значение
+		float value = evaluateMath(safeMathExpr);
+
+		// 3. Сохраняем имя переменной с префиксом "_"
+		String safeVarName = sanitizeVarName(rawVarName);
+		variables.put(safeVarName, value);
+	}
+
+	private static String sanitizeVarName(String varName) {
+		String trimmed = varName.trim();
+		// Если переменная еще не содержит префикс _, добавляем его
+		return trimmed.startsWith("_") ? trimmed : "_" + trimmed;
+	}
+
+	/**
+	 * Преобразует математическое выражение, подставляя префиксы '_'
+	 * ко всем известным переменным, чтобы избежать конфликтов с функциями exp4j.
+	 */
+	private String sanitizeExpression(String expr) {
+		if (expr == null || expr.isEmpty()) {
+			return expr;
+		}
+
+		String sanitized = expr;
+		// Заменяем имеющиеся переменные на их безопасные аналоги с "_"
+		for (String varName : variables.keySet()) {
+			// Убираем префикс '_', чтобы получить оригинальное имя для поиска в тексте
+			String originalName = varName.startsWith("_") ? varName.substring(1) : varName;
+
+			// Используем \b для точной замены полного слова (чтобы 'rad' не изменил 'grad')
+			sanitized = sanitized.replaceAll("\\b" + Pattern.quote(originalName) + "\\b", varName);
+		}
+
+		return sanitized;
 	}
 
 	/**
 	 * Substitutes numeric values instead of symbols into standard cards
 	 */
 	private String evaluateAndReplaceLine(String line) {
-		// 1. Convert AWG (#14) gauges to radius in meters
+		if (line == null || line.trim().isEmpty()) {
+			return line;
+		}
+
+		// 1. Сохраняем и отделяем комментарии 4nec2 (начинаются с апострофа ')
+		int commentIdx = line.indexOf('\'');
+		String comment = "";
+		if (commentIdx != -1) {
+			comment = line.substring(commentIdx);
+			line = line.substring(0, commentIdx);
+		}
+
+		// 2. Обработка AWG калибров
 		if (line.contains("#")) {
 			line = convertAwgToRadius(line);
 		}
 
-		// Splits a line into an array of tokens by spaces. If the line is empty, return
+		// 3. Нейтрализация микро-хаков 4nec2 вида "1e-300" / "1e-100" до парсинга
+		line = line.replaceAll("(?i)1e-\\d+", "0.0001");
+
 		String[] tokens = line.trim().split("\\s+");
 		if (tokens.length == 0 || tokens[0].isEmpty()) {
 			return line;
@@ -251,46 +300,72 @@ public class NecFileSanitizer {
 		StringBuilder lineBuilder = new StringBuilder();
 		int startIndex = 0;
 
-		// 2. Check if the first token is a standard NEC card
 		String firstTokenUpper = tokens[0].toUpperCase(Locale.US);
 		if (NEC_CARDS.contains(firstTokenUpper)) {
-			lineBuilder.append(firstTokenUpper); // Keep the card name unchanged
-			startIndex = 1; // Looking for mathematics and variables only in arguments
+			lineBuilder.append(firstTokenUpper);
+			startIndex = 1;
 		}
 
-		// 3. Process the remaining string parameters
 		for (int i = startIndex; i < tokens.length; i++) {
 			if (lineBuilder.length() > 0) {
 				lineBuilder.append(" ");
 			}
 
 			String token = tokens[i];
-			// Checking whether a token is a text representing a variable or a mathematical expression
-			if (containsVariableOrMath(token)) {
-				// Substitute the variable or the expression for the numerical value
-				double val = evaluateMath(token);
-				lineBuilder.append(String.format(Locale.US, "%.6f", val));
+
+			if (isNumeric(token)) {
+				lineBuilder.append(formatSafeFloatNumber(token));
 			} else {
-				// Substitute the scientific value for the simple value
-				lineBuilder.append(normalizeScientificNotation(token));
+				try {
+					// Вычисление математического выражения с возвратом float
+					String safeToken = sanitizeExpression(token);
+					float val = evaluateMath(safeToken);
+					lineBuilder.append(formatFloatForNec(val));
+				} catch (Exception e) {
+					// Если это не выражение, обрабатываем как числовой/текстовый токен
+					lineBuilder.append(formatSafeFloatNumber(token));
+				}
 			}
 		}
 
-		return lineBuilder.toString();
+		return lineBuilder + (comment.isEmpty() ? "" : " " + comment);
+	}
+
+	private boolean isNumeric(String str) {
+		try {
+			Float.parseFloat(str);
+			return true;
+		} catch (NumberFormatException e) {
+			return false;
+		}
 	}
 
 	/**
-	 * Converts scientific notation like 4.e-3 or 5E-3 to 0.004 / 0.005
+	 * Форматирование float в синтаксис NEC без экспоненциального хвоста нулей.
 	 */
-	private String normalizeScientificNotation(String token) {
-		try {
-			if (token.toLowerCase(Locale.US).contains("e")) {
-				BigDecimal bd = new BigDecimal(token);
-				return bd.toPlainString();
-			}
-		} catch (Exception ignored) {
+	private String formatFloatForNec(float val) {
+		if (Float.isNaN(val) || Float.isInfinite(val)) {
+			return "0.0";
 		}
-		return token;
+
+		if (Math.abs(val) < 1e-7f) {
+			return "0.0";
+		}
+
+		String formatted = String.format(Locale.US, "%.6f", val);
+		return removeTrailingZerosFromNumber(formatted);
+	}
+
+	/**
+	 * Безопасное чтение float из токена.
+	 */
+	private String formatSafeFloatNumber(String token) {
+		try {
+			float parsed = Float.parseFloat(token);
+			return formatFloatForNec(parsed);
+		} catch (NumberFormatException e) {
+			return token;
+		}
 	}
 
 	/**
@@ -301,12 +376,9 @@ public class NecFileSanitizer {
 		StringBuffer sb = new StringBuffer();
 		while (matcher.find()) {
 			String fullMatch = matcher.group(0);
-			if (fullMatch == null) {
-				continue;
-			}
+			if (fullMatch == null) continue;
 			try {
 				String group1 = matcher.group(1);
-
 				if (group1 != null) {
 					int awgNumber = Integer.parseInt(group1);
 					double diameterMm = 0.127 * Math.pow(92.0, (36.0 - awgNumber) / 39.0);
@@ -326,65 +398,42 @@ public class NecFileSanitizer {
 	}
 
 	/**
-	 * Checking whether a token is a variable or a mathematical expression
-	 * composed of variables by matching the text against a given set of variables.
+	 * Evaluates a mathematical expression using exp4j with support for registered SY variables.
 	 */
-	private boolean containsVariableOrMath(String token) {
-		if (variables.isEmpty()) return false;
-
-		for (String var : variables.keySet()) {
-			if (token.contains(var)) return true;
-		}
-		return false;
-	}
-
-	/**
-	 * Substitute the variable or the expression for the numerical value
-	 */
-	private double evaluateMath(String expr) {
-		for (Map.Entry<String, Double> entry : variables.entrySet()) {
-			expr = expr.replaceAll("\\b" + Pattern.quote(entry.getKey()) + "\\b",
-				 String.valueOf(entry.getValue()));
+	private float evaluateMath(String expr) throws IllegalArgumentException {
+		if (expr == null || expr.trim().isEmpty()) {
+			return 0.0f;
 		}
 
-		try {
-			return evalSimpleMath(expr);
-		} catch (Exception e) {
-			return 0.0;
-		}
-	}
+		// Объединяем глобальные Float-константы и пользовательские Float-переменные SY
+		Map<String, Float> allVariablesFloat = new HashMap<>(Custom4Nec2Functions.BUILTIN_CONSTANTS);
+		allVariablesFloat.putAll(this.variables);
 
-	/**
-	 * Substitute the simple mathematical expression for the numerical value
-	 */
-	private double evalSimpleMath(String expr) {
-		expr = expr.replaceAll("\\s+", "");
-
-		try {
-			return Double.parseDouble(expr);
-		} catch (NumberFormatException ignored) {
+		// exp4j требует Map<String, Double> только на время расчета выражения
+		Map<String, Double> exp4jVariables = new HashMap<>();
+		for (Map.Entry<String, Float> entry : allVariablesFloat.entrySet()) {
+			exp4jVariables.put(entry.getKey(), entry.getValue().doubleValue());
 		}
 
-		if (expr.contains("/")) {
-			int idx = expr.lastIndexOf('/');
-			return evalSimpleMath(expr.substring(0, idx)) / evalSimpleMath(expr.substring(idx + 1));
-		}
-		if (expr.contains("*")) {
-			int idx = expr.lastIndexOf('*');
-			return evalSimpleMath(expr.substring(0, idx)) * evalSimpleMath(expr.substring(idx + 1));
-		}
-		if (expr.contains("+")) {
-			int idx = expr.lastIndexOf('+');
-			return evalSimpleMath(expr.substring(0, idx)) + evalSimpleMath(expr.substring(idx + 1));
-		}
-		if (expr.contains("-")) {
-			int idx = expr.lastIndexOf('-');
-			if (idx > 0) {
-				return evalSimpleMath(expr.substring(0, idx)) - evalSimpleMath(expr.substring(idx + 1));
-			}
+		Expression expression = new ExpressionBuilder(expr)
+			 .functions(Custom4Nec2Functions.ALL_4NEC2_FUNCTIONS)
+			 .variables(exp4jVariables.keySet())
+			 .build();
+
+		expression.setVariables(exp4jVariables);
+
+		float result = (float) expression.evaluate();
+
+		if (Float.isNaN(result) || Float.isInfinite(result)) {
+			throw new IllegalArgumentException("Invalid float math result (NaN/Infinity) for: " + expr);
 		}
 
-		return 0.0;
+		// Фильтрация underflow под точность float
+		if (Math.abs(result) < 1e-7f) {
+			return 0.0f;
+		}
+
+		return result;
 	}
 
 	/**
@@ -407,28 +456,21 @@ public class NecFileSanitizer {
 	private String sanitizeNecText(String source) {
 		if (source == null || source.isEmpty()) return "";
 
-		// Splits the .nec source file into an array of lines.
 		String[] lines = source.split("\\r?\\n");
 		StringBuilder sb = new StringBuilder();
 
 		for (String line : lines) {
 			String trimmed = line.trim();
-			// Removes empty lines
 			if (trimmed.isEmpty()) continue;
 
-			// Replaces comma and tab separators with spaces
 			trimmed = trimmed.replace(",", " ").replace("\t", " ");
-			// Finds the number/dot combination before the minus sign and inserts a space between them
 			trimmed = trimmed.replaceAll("([0-9.])(?=-[0-9.])", "$1 ");
 
-			// Splits a string into tokens array on spaces
 			String[] tokens = trimmed.split("\\s+");
 			StringBuilder lineBuilder = new StringBuilder();
 
-			// Formats numbers, trims leading zeros (12.5000 -> 12.5). Reassembles tokens into a string.
 			for (int i = 0; i < tokens.length; i++) {
 				String token = tokens[i];
-
 				String cleanToken = removeTrailingZerosFromNumber(token);
 				lineBuilder.append(cleanToken);
 

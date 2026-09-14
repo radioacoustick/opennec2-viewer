@@ -333,7 +333,7 @@ public class MainActivity extends AppCompatActivity {
 				String resultJson = necService.runSimulation(necInput);
 
 				// 3. Return the result to the main UI thread
-				runOnUiThread(() -> necResultViewModel.onCalculationSuccess(resultJson));
+				runOnUiThread(() -> necResultViewModel.onCalculationSuccess(resultJson, getString(R.string.message_error_unknown)));
 
 			} catch (DeadObjectException e) {
 				Log.e(TAG, "IPC error: necpp service process was killed", e);

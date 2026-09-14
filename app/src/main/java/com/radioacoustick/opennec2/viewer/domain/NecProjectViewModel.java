@@ -142,9 +142,15 @@ public class NecProjectViewModel extends ViewModel {
 	/**
 	 * Formatting the input rawNecText
 	 */
-	public void processCleanedNecText(String inputRawText) {
+	public boolean processCleanedNecText(String inputRawText) {
 		NecFileSanitizer sanitizer = new NecFileSanitizer();
-		cleanedNecText.setValue(sanitizer.sanitizeForEngine(inputRawText));
+		String sanitazedText = sanitizer.sanitizeForEngine(inputRawText);
+		if (sanitazedText.isEmpty()) {
+			clearNecProject();
+			return false;
+		}
+		cleanedNecText.setValue(sanitazedText);
+		return true;
 	}
 
 	/**

@@ -21,6 +21,9 @@ package com.radioacoustick.opennec2.viewer.nec;
 
 import androidx.annotation.Keep;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.annotations.SerializedName;
 
 /**
@@ -29,24 +32,23 @@ import com.google.gson.annotations.SerializedName;
 public class NecResult {
 
 	// --- RadiationPattern result fields ---
-	public float[] anglesPhi;
-	public float[] gainsPhi;
-	public float[] anglesTheta;
-	public float[] gainsTheta;
+	public float[] anglesPhi = new float[0];
+	public float[] gainsPhi = new float[0];
+	public float[] anglesTheta = new float[0];
+	public float[] gainsTheta = new float[0];
 	public float maxGain;
 	public float frontToBack;
 	public float phi;
 	public float theta;
 
 	// --- Frequency sweep result fields ---
-	public float[] frequencies;
-	public float[] resistance;
-	public float[] reactance;
-	public float[] gainsF;
-	public float[] frontToBackF;
+	public float[] frequencies = new float[0];
+	public float[] resistance = new float[0];
+	public float[] reactance = new float[0];
+	public float[] gainsF = new float[0];
+	public float[] frontToBackF = new float[0];
 
-	// TODO Requires editing when data changes on the nec2core service side
-	// --- Internal DTO structures that are completely identical to C++ JSON (nec2core_jni.cpp) ---
+	// --- Internal DTO structures with JsonElement for arrays ---
 	public static class RawJsonResponse {
 		@Keep
 		@SerializedName("pattern")
@@ -76,79 +78,127 @@ public class NecResult {
 
 		@Keep
 		@SerializedName("anglesTheta")
-		public float[] anglesTheta;
+		public JsonElement anglesTheta;
 
 		@Keep
 		@SerializedName("gainsTheta")
-		public float[] gainsTheta;
+		public JsonElement gainsTheta;
 
 		@Keep
 		@SerializedName("anglesPhi")
-		public float[] anglesPhi;
+		public JsonElement anglesPhi;
 
 		@Keep
 		@SerializedName("gainsPhi")
-		public float[] gainsPhi;
+		public JsonElement gainsPhi;
 	}
 
 	public static class SweepDto {
 		@Keep
 		@SerializedName("frequencies")
-		public float[] frequencies;
+		public JsonElement frequencies;
 
 		@Keep
 		@SerializedName("resistance")
-		public float[] resistance;
+		public JsonElement resistance;
 
 		@Keep
 		@SerializedName("reactance")
-		public float[] reactance;
+		public JsonElement reactance;
 
 		@Keep
 		@SerializedName("gains_f")
-		public float[] gainsF;
+		public JsonElement gainsF;
 
 		@Keep
 		@SerializedName("front_back")
-		public float[] frontBackF;
+		public JsonElement frontBackF;
 	}
 
 	/**
-	 * Parses a JSON string from nec2++ and turns it into a NecResult object
+	 * Parses a JSON string from nec2++ safely without crashing on nulls/NaNs.
 	 *
 	 * @param jsonString input JSON string from nec2++ service
-	 * @param gson com.google.gson.Gson Object to parse input
-	 * @return NecResult Object
+	 * @param gson       com.google.gson.Gson Object to parse input
+	 * @return NecResult Object or null if fatal parse failure
 	 */
-	public static NecResult parseFromJson(String jsonString, com.google.gson.Gson gson) {
-		if (jsonString == null || jsonString.isEmpty()) {
+	public static NecResult parseFromJson(String jsonString, Gson gson) {
+		if (jsonString == null || jsonString.trim().isEmpty()) {
 			return null;
 		}
 
-		RawJsonResponse raw = gson.fromJson(jsonString, RawJsonResponse.class);
-		if (raw == null) return null;
+		try {
+			RawJsonResponse raw = gson.fromJson(jsonString, RawJsonResponse.class);
+			if (raw == null) return null;
 
-		NecResult result = new NecResult();
+			NecResult result = new NecResult();
 
-		if (raw.pattern != null) {
-			result.maxGain = raw.pattern.maxGain;
-			result.frontToBack = raw.pattern.frontToBack;
-			result.phi = raw.pattern.phi;
-			result.theta = raw.pattern.theta;
-			result.anglesTheta = raw.pattern.anglesTheta;
-			result.gainsTheta = raw.pattern.gainsTheta;
-			result.anglesPhi = raw.pattern.anglesPhi;
-			result.gainsPhi = raw.pattern.gainsPhi;
+			if (raw.pattern != null) {
+				result.maxGain = sanitizeFloat(raw.pattern.maxGain);
+				result.frontToBack = sanitizeFloat(raw.pattern.frontToBack);
+				result.phi = sanitizeFloat(raw.pattern.phi);
+				result.theta = sanitizeFloat(raw.pattern.theta);
+
+				// Если хоть один массив содержит null/NaN или сам равен null,
+				// parseStrictFloatArray выбросит исключение и унесет вызов в catch -> return null
+				result.anglesTheta = parseStrictFloatArray(raw.pattern.anglesTheta);
+				result.gainsTheta = parseStrictFloatArray(raw.pattern.gainsTheta);
+				result.anglesPhi = parseStrictFloatArray(raw.pattern.anglesPhi);
+				result.gainsPhi = parseStrictFloatArray(raw.pattern.gainsPhi);
+			}
+
+			if (raw.sweep != null) {
+				result.frequencies = parseStrictFloatArray(raw.sweep.frequencies);
+				result.resistance = parseStrictFloatArray(raw.sweep.resistance);
+				result.reactance = parseStrictFloatArray(raw.sweep.reactance);
+				result.gainsF = parseStrictFloatArray(raw.sweep.gainsF);
+				result.frontToBackF = parseStrictFloatArray(raw.sweep.frontBackF);
+			}
+
+			return result;
+
+		} catch (Exception e) {
+			// Любой null внутри данныхбракует весь NecResult
+			return null;
+		}
+	}
+
+	/**
+	 * Строгий парсинг массива: бросает исключение при наличии null, NaN или Infinity.
+	 */
+	private static float[] parseStrictFloatArray(JsonElement element) throws IllegalArgumentException {
+		if (element == null || element.isJsonNull() || !element.isJsonArray()) {
+			throw new IllegalArgumentException("Array element is null or not a JSON array");
 		}
 
-		if (raw.sweep != null) {
-			result.frequencies = raw.sweep.frequencies;
-			result.resistance = raw.sweep.resistance;
-			result.reactance = raw.sweep.reactance;
-			result.gainsF = raw.sweep.gainsF;
-			result.frontToBackF = raw.sweep.frontBackF;
+		JsonArray array = element.getAsJsonArray();
+		float[] result = new float[array.size()];
+
+		for (int i = 0; i < array.size(); i++) {
+			JsonElement item = array.get(i);
+
+			// Если элемент массива null (например [1.0, null, 2.0]) — забраковываем
+			if (item == null || item.isJsonNull() || !item.isJsonPrimitive()) {
+				throw new IllegalArgumentException("Array contains null or non-primitive item at index " + i);
+			}
+
+			float val = item.getAsFloat();
+
+			// Проверяем валидность числа (NaN и Infinity также считаем повреждением данных)
+			if (Float.isNaN(val) || Float.isInfinite(val)) {
+				throw new IllegalArgumentException("Array contains invalid float (NaN/Infinity) at index " + i);
+			}
+
+			result[i] = val;
 		}
 
 		return result;
+	}
+
+	private static float sanitizeFloat(float val) throws IllegalArgumentException {
+		if (Float.isNaN(val) || Float.isInfinite(val)) {
+			throw new IllegalArgumentException("Float value is NaN or Infinity");
+		}
+		return val;
 	}
 }

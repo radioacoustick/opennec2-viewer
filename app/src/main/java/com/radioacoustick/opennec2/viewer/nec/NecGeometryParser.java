@@ -29,6 +29,8 @@ import java.util.Scanner;
  */
 public class NecGeometryParser {
 
+	//TODO add complex objects, such as Helix, etc.
+
 	/**
 	 * Parses the NEC input text, finds all GW cards, and returns a Wire[] array.
 	 *
